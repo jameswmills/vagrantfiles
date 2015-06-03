@@ -1,0 +1,34 @@
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.define :monkey, primary: true do |monkey|
+    monkey.vm.box = "atomic-7.1.0" 
+    monkey.vm.hostname = "monkey"
+    monkey.vm.synced_folder ".", "/vagrant", disabled: true
+    monkey.vm.provider :libvirt do |libvirt|
+      libvirt.storage_pool_name = "virtstorage"
+    end
+    monkey.vm.provision "shell", path: "scripts/ah_upgrade.sh"
+    monkey.vm.provision :reload
+    monkey.vm.provision "shell", path: "scripts/kube-config.sh", args: "master zebra"
+    if Vagrant.has_plugin?('vagrant-registration')
+      monkey.registration.username = ENV['rh_user']
+      monkey.registration.password = ENV['rh_pass']
+    end
+  end
+  config.vm.define :zebra do |zebra|
+    zebra.vm.box = "atomic-7.1.0" 
+    zebra.vm.hostname = "zebra"
+    zebra.vm.synced_folder ".", "/vagrant", disabled: true
+    zebra.vm.provider :libvirt do |libvirt|
+      libvirt.storage_pool_name = "virtstorage"
+    end
+    zebra.vm.provision "shell", path: "scripts/ah_upgrade.sh"
+    zebra.vm.provision :reload
+    zebra.vm.provision "shell", path: "scripts/kube-config.sh", args: "minion zebra monkey"
+    if Vagrant.has_plugin?('vagrant-registration')
+      zebra.registration.username = ENV['rh_user']
+      zebra.registration.password = ENV['rh_pass']
+    end
+  end
+end
