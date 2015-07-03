@@ -62,6 +62,7 @@ EOF
 ETCD_NAME=default
 ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
 ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:4001"
+ETCD_ADVERTISE_CLIENT_URLS="http://localhost:2379,http://localhost:4001"
 EOF
 
     systemctl enable etcd.service kube-apiserver.service kube-controller-manager.service kube-proxy.service kube-scheduler.service
