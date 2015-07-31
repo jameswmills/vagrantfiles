@@ -10,9 +10,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       ahconfig.vm.box = "atomic-7.1.0" 
       ahconfig.vm.hostname = vmname.to_s
       ahconfig.vm.synced_folder ".", "/vagrant", disabled: true
-      ahconfig.vm.provider :libvirt do |libvirt|
-        libvirt.storage_pool_name = "virtstorage"
-      end
+      # ahconfig.vm.provider :libvirt do |libvirt|
+      #   libvirt.storage_pool_name = "virtstorage"
+      # end
       ahconfig.vm.provision "shell", path: "scripts/ah_upgrade.sh"
       ahconfig.vm.provision :reload
       ahconfig.vm.provision "shell", path: "scripts/kube-config.sh", args: params[:args].to_s
