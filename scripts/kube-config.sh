@@ -79,7 +79,7 @@ EOF
     do
         if [ ! -z "${array[$i]}" ]; then
             cat << EOF > /etc/kubernetes/minion_configs/${array[$i]}.yaml
-apiVersion: v1beta3
+apiVersion: v1
 kind: Node
 metadata:
   name: ${array[$i]}
