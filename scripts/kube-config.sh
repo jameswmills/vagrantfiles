@@ -64,10 +64,9 @@ ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
 ETCD_LISTEN_CLIENT_URLS="http://0.0.0.0:4001"
 ETCD_ADVERTISE_CLIENT_URLS="http://localhost:2379,http://localhost:4001"
 EOF
-
+    ip link delete docker0
     systemctl enable etcd.service kube-apiserver.service kube-controller-manager.service kube-proxy.service kube-scheduler.service
-
-    systemctl start etcd.service kube-apiserver.service kube-controller-manager.service kube-proxy.service kube-scheduler.service 
+    systemctl start etcd.service kube-apiserver.service kube-controller-manager.service kube-proxy.service kube-scheduler.service
 
     # Wait for things to settle and create minion configs
     # under /etc/kubernetes/minion_configs
@@ -92,6 +91,30 @@ EOF
             kubectl create -f /etc/kubernetes/minion_configs/${array[$i]}.yaml
         fi
     done
+
+    #Add flanneld config
+    cat << EOF > /etc/kubernetes/minion_configs/flanneld.yaml
+{
+    "Network": "10.10.0.0/16",
+    "SubnetLen": 24,
+    "Backend": {
+        "Type": "vxlan",
+        "VNI": 1
+     }
+}
+EOF
+    etcdctl set /coreos.com/network/config < /etc/kubernetes/minion_configs/flanneld.yaml
+    #let etcd figure stuff out
+    sleep 5
+
+    cat << EOF > /etc/sysconfig/flanneld
+#FILE: flanneld
+FLANNEL_ETCD="http://${ip}:4001"
+FLANNEL_ETCD_KEY="/coreos.com/network"
+#FLANNEL_OPTIONS=""
+EOF
+    systemctl enable flanneld.service
+    systemctl start flanneld.service
 
 fi
 
@@ -146,7 +169,20 @@ EOF
 KUBE_SCHEDULER_ARGS=""
 EOF
 
-    systemctl enable kube-proxy.service kubelet.service docker
-    systemctl start kube-proxy.service kubelet.service docker
+    cat << EOF > /etc/sysconfig/flanneld
+#FILE: flanneld
+FLANNEL_ETCD="http://${masterip}:4001"
+FLANNEL_ETCD_KEY="/coreos.com/network"
+#FLANNEL_OPTIONS=""
+EOF
+
+    systemctl enable kube-proxy.service kubelet.service flanneld.service docker
+    systemctl start kube-proxy.service kubelet.service flanneld.service docker
+    systemctl stop flanneld.service
+    systemctl stop docker
+    ip link delete docker0
+    systemctl start flanneld.service
+    systemctl start docker
+    systemctl start kubelet
 
 fi
