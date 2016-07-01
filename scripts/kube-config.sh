@@ -116,6 +116,10 @@ EOF
     systemctl enable flanneld.service
     systemctl start flanneld.service
 
+    #SkyDNS/kube2sky
+    docker run -d --net=host --restart=always gcr.io/google_containers/kube2sky:1.11 -v=10 -logtostderr=true -domain=kubernetes.local -etcd-server="http://${ip}:4001"
+    docker run -d --net=host --restart=always -e ETCD_MACHINES="http://${ip}:4001" -e SKYDNS_DOMAIN="kubernetes.local" -e SKYDNS_ADDR="0.0.0.0:53" -e SKYDNS_NAMESERVERS="8.8.8.8:53,8.8.4.4:53" gcr.io/google_containers/skydns:2015-03-11-001
+
 fi
 
 
@@ -155,7 +159,8 @@ KUBELET_ADDRESS="--address=0.0.0.0"
 KUBELET_PORT="--port=10250"
 KUBELET_HOSTNAME="--hostname_override=${minion}"
 KUBELET_API_SERVER="--api_servers=http://${masterip}:8080"
-KUBELET_ARGS=""
+#SkyDNS/kube2sky
+KUBELET_ARGS="--cluster_dns=${masterip} --cluster_domain=kubernetes.local"
 EOF
 
     cat << EOF > /etc/kubernetes/proxy
