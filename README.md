@@ -33,7 +33,8 @@ contains a few simple examples, including:
 
 Not much to say here.  Edit the Vagrant file and change the names of
 the hosts, or add a few more nodes (they are the ones with :primary =>
-false), and run "vagrant up --no-parallel"  Running in serial ensures
+false), and run "rh_user=YOUR_RH_USERNAME rh_pass=YOUR_RH_PASSWORD
+vagrant  up --no-parallel"  Running in serial ensures
 the master services are up and running prior to the nodes attempting
 to connect.
 
