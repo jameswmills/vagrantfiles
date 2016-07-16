@@ -1,0 +1,7 @@
+#FILE: kubelet
+KUBELET_ADDRESS="--address=0.0.0.0"
+KUBELET_PORT="--port=10250"
+KUBELET_HOSTNAME="--hostname_override={{ ansible_hostname }}"
+KUBELET_API_SERVER="--api_servers=https://{{ masterip }}:6443"
+#SkyDNS/kube2sky
+KUBELET_ARGS="--cluster_dns=10.254.0.10 --cluster_domain=kubernetes.local --tls-cert-file=/etc/kubernetes/certs/{{ ansible_hostname }}.crt --tls-private-key-file=/etc/kubernetes/certs/{{ ansible_hostname }}.key --kubeconfig=/etc/kubernetes/kubelet.kubeconfig"

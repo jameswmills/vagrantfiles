@@ -1,0 +1,8 @@
+#FILE:  apiserver
+KUBE_API_ADDRESS="--address=0.0.0.0"
+#KUBE_API_PORT="--port=8080"
+KUBE_ETCD_SERVERS="--etcd_servers=http://{{ masterip }}:4001"
+KUBELET_PORT="--kubelet_port=10250"
+KUBE_SERVICE_ADDRESSES="--portal_net=10.254.0.0/16"
+KUBE_ADMISSION_CONTROL="--admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,ResourceQuota"
+KUBE_API_ARGS="--secure-port=6443 --tls_cert_file=/etc/kubernetes/certs/{{ item }}.crt --tls_private_key_file=/etc/kubernetes/certs/{{ item }}.key --client_ca_file=/etc/kubernetes/certs/ca.crt --service_account_key_file=/etc/kubernetes/certs/{{ item }}.key"

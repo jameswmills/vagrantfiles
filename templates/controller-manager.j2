@@ -1,0 +1,2 @@
+#FILE:  controller-manager
+KUBE_CONTROLLER_MANAGER_ARGS="--service_account_private_key_file=/etc/kubernetes/certs/{{ item }}.key --kubeconfig=/etc/kubernetes/controller-manager.kubeconfig"

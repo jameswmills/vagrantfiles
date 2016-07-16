@@ -1,0 +1,208 @@
+---
+- hosts: master:nodes
+  become: true
+  name: Hacks for now
+  tasks:
+    - name: Change the root passwd and disable selinux
+      shell: chdir=/etc/sysconfig {{ item }}
+      with_items:
+        - echo "root:vagrant" | chpasswd
+        - sed -i -e 's/^SELINUX=enforcing/SELINUX=permissive/' selinux
+        - setenforce 0
+
+- hosts: master
+  become: true
+  vars:
+    masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
+  tasks:
+    - name: Huh?
+      debug: msg="System {{ hostvars[item]['inventory_hostname'] }} {{hostvars[item]['ansible_ssh_host'] }}"
+      with_items: "{{ groups.all }}"
+#     - name: Backup configuration files on master
+#       command: cp -f {{ item }} {{ item }}.{{ lookup('pipe','date +%Y%m%d%H%M%S') }}
+#       with_items:
+#         - /etc/etcd/etcd.conf
+#         - /etc/kubernetes/apiserver
+#         - /etc/kubernetes/config
+#         - /etc/kubernetes/controller-manager
+#         - /etc/kubernetes/kubelet
+#         - /etc/kubernetes/proxy
+#         - /etc/kubernetes/scheduler
+
+    - name: Create local certs directory
+      local_action: file path=certs state=directory
+
+    - name: Create master cert conf
+      local_action: template src=server_ssl_conf.j2 dest=certs/{{ ansible_hostname }}.conf
+
+    - name: Create node cert conf
+      local_action: template src=node_ssl_conf.j2 dest=certs/{{ item }}.conf
+      with_items: "{{ groups.nodes }}"
+
+    - name: Generate CA key
+      local_action: command chdir=certs openssl genrsa -out ca.key 2048
+
+    - name: Generate CA cert
+      local_action: command chdir=certs openssl req -x509 -new -nodes -key ca.key -subj "/CN={{ item }}" -days 10000 -out ca.crt -config {{ item }}.conf
+      with_items: "{{ groups.master }}"
+
+    - name: Generate Master/Node key
+      local_action: command chdir=certs openssl genrsa -out {{ item }}.key 2048
+      with_items:
+        - "{{ groups.master }}"
+        - "{{ groups.nodes }}"
+
+    - name: Generate new Master/Node csr
+      local_action: command chdir=certs openssl req -new -key {{ item }}.key -subj "/CN={{ item }}" -out {{ item }}.csr
+      with_items:
+        - "{{ groups.master }}"
+        - "{{ groups.nodes }}"
+
+    - name: Generate Master/Node cert
+      local_action: command chdir=certs openssl x509 -req -in {{ item }}.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out {{ item }}.crt -days 10000 -extensions v3_req -extfile {{ item }}.conf
+      with_items:
+        - "{{ groups.master }}"
+        - "{{ groups.nodes }}"
+
+
+    - name: Copy certs from localhost to Master
+      synchronize: src=certs dest=/etc/kubernetes/
+
+    - name: /etc/etcd/etcd.conf
+      template: src=etcd.conf.j2 dest=/etc/etcd/etcd.conf
+
+    - name: /etc/kubernetes/apiserver
+      template: src=apiserver.j2 dest=/etc/kubernetes/apiserver
+      with_items: "{{ groups.master }}"
+
+    - name: /etc/kubernetes/config
+      template: src=config.j2 dest=/etc/kubernetes/config
+
+    - name: /etc/kubernetes/controller-manager
+      template: src=controller-manager.j2 dest=/etc/kubernetes/controller-manager
+      with_items: "{{ groups.master }}"
+
+    - name: /etc/kubernetes/proxy
+      template: src=proxy.j2 dest=/etc/kubernetes/proxy
+
+    - name: /etc/kubernetes/scheduler
+      template: src=scheduler.j2 dest=/etc/kubernetes/scheduler
+
+    - name: kubeconfigs
+      template: src=kubeconfig.j2 dest=/etc/kubernetes/{{ item[0] }}.kubeconfig
+      with_nested:
+        - ['controller-manager', 'proxy', 'scheduler']
+        - ["{{ansible_hostname }}"]
+
+    - name: Enable kube services
+      command: systemctl enable etcd.service kube-apiserver.service kube-controller-manager.service kube-proxy.service kube-scheduler.service
+
+    - name: Start kube services
+      command: systemctl start etcd.service kube-apiserver.service kube-controller-manager.service kube-proxy.service kube-scheduler.service
+
+    - name: Create node files
+      template: src=node_config.j2 dest=/etc/kubernetes/{{ item }}.yaml
+      with_items: "{{ groups.nodes }}"
+
+    - name: Add nodes
+      command: kubectl create -f /etc/kubernetes/{{ item }}.yaml
+      with_items: "{{ groups.nodes }}"
+
+    - name: Create flanneld network configuration
+      template: src=flanneld_network.j2 dest=/etc/kubernetes/flanneld.json
+
+    - name: Add flanneld config to etcd
+      shell: etcdctl set /coreos.com/network/config < /etc/kubernetes/flanneld.json
+
+    - name: /etc/sysconfig/flanneld
+      template: src=flanneld.j2 dest=/etc/sysconfig/flanneld
+
+    - name: Remove docker0
+      shell: ip link delete docker0 || true
+
+    - name: Enable flanneld
+      command: systemctl enable flanneld.service
+
+    - name: Start flanneld
+      command: systemctl start flanneld.service
+
+    - name: Secure kubectl
+      command: chdir=/tmp {{ item }}
+      with_items:
+        - kubectl config set-cluster secure  --certificate-authority=/etc/kubernetes/certs/ca.crt  --embed-certs=false --server=https://{{ masterip }}:6443
+        - kubectl config set-credentials admin --client-key=/etc/kubernetes/certs/{{ ansible_hostname }}.key --client-certificate=/etc/kubernetes/certs/{{ ansible_hostname }}.crt --embed-certs=false
+        - kubectl config set-context secure
+        - kubectl config set-context secure --cluster=secure --user=admin
+        - kubectl config use-context secure
+
+- hosts: nodes
+  become: true
+  vars:
+    masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
+  tasks:
+
+    - name: Copy certs from localhost to Master
+      synchronize: src=certs dest=/etc/kubernetes/
+
+    - name: /etc/kubernetes/config
+      template: src=config.j2 dest=/etc/kubernetes/config
+
+    - name: /etc/kubernetes/proxy
+      template: src=proxy.j2 dest=/etc/kubernetes/proxy
+
+    - name: kubeconfigs
+      template: src=kubeconfig.j2 dest=/etc/kubernetes/{{ item[0] }}.kubeconfig
+      with_nested:
+        - ['kubelet', 'proxy']
+        - ["{{ansible_hostname }}"]
+
+    - name: /etc/kubernetes/kubelet
+      template: src=kubelet.j2 dest=/etc/kubernetes/kubelet
+
+    - name: /etc/sysconfig/flanneld
+      template: src=flanneld.j2 dest=/etc/sysconfig/flanneld
+
+    - name: Enable services
+      command: systemctl enable kube-proxy.service kubelet.service flanneld.service docker.service
+
+    - name: Start services
+      command: systemctl start kube-proxy.service kubelet.service flanneld.service docker.service
+
+    - name: Stop docker and flanneld
+      command: systemctl stop flanneld.service docker.service
+
+    - name: Remove docker0
+      shell: ip link delete docker0 || true
+
+    - name: Restart services
+      command: systemctl start flanneld.service docker.service kubelet
+
+- hosts: master
+  become: true
+  vars:
+    masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
+  tasks:
+    - name: Add skyDNS/kube2sky pod definition
+      template: src=skydns.j2 dest=/root/skydns.yaml
+
+    - name: Add skyDNS service definition
+      template: src=skydns_svc.j2 dest=/root/skydns-svc.yaml
+
+    - name: Add busybox pod definition
+      template: src=busybox.j2 dest=/root/bb.yaml
+
+    - name: Add simple web service definition
+      template: src=simplewebservice.j2 dest=/root/simplewebservice.yaml
+
+    - name: Add simple web pod definition
+      template: src=simpleweb.j2 dest=/root/simpleweb.yaml
+
+    - name: Create pods and services
+      command: chdir=/root {{ item }}
+      with_items:
+        - kubectl create namespace kube-system
+        - kubectl create -f skydns-svc.yaml
+        - kubectl create -f skydns.yaml
+        - kubectl create -f bb.yaml
+        - kubectl create -f simplewebservice.yaml
+        - kubectl create -f simpleweb.yaml
