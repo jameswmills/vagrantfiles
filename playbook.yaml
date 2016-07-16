@@ -15,19 +15,9 @@
   vars:
     masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
   tasks:
-    - name: Huh?
-      debug: msg="System {{ hostvars[item]['inventory_hostname'] }} {{hostvars[item]['ansible_ssh_host'] }}"
+    - name: Hostnames and IP addresses
+      debug: msg="System {{ hostvars[item]['inventory_hostname'] }} has IP {{hostvars[item]['ansible_ssh_host'] }}"
       with_items: "{{ groups.all }}"
-#     - name: Backup configuration files on master
-#       command: cp -f {{ item }} {{ item }}.{{ lookup('pipe','date +%Y%m%d%H%M%S') }}
-#       with_items:
-#         - /etc/etcd/etcd.conf
-#         - /etc/kubernetes/apiserver
-#         - /etc/kubernetes/config
-#         - /etc/kubernetes/controller-manager
-#         - /etc/kubernetes/kubelet
-#         - /etc/kubernetes/proxy
-#         - /etc/kubernetes/scheduler
 
     - name: Create local certs directory
       local_action: file path=certs state=directory
@@ -141,7 +131,7 @@
     masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
   tasks:
 
-    - name: Copy certs from localhost to Master
+    - name: Copy certs from localhost to Nodes
       synchronize: src=certs dest=/etc/kubernetes/
 
     - name: /etc/kubernetes/config
