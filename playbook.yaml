@@ -194,6 +194,9 @@
     - name: Add simple web pod definition
       template: src=simpleweb.j2 dest=/root/simpleweb.yaml
 
+    - name: Add kuberneted-dashboard
+      template: src=kubernetes-dashboard.j2 dest=/root/kubernetes-dashboard.yaml
+
     - name: Create pods and services
       command: chdir=/root {{ item }}
       with_items:
@@ -203,3 +206,4 @@
         - kubectl create -f bb.yaml
         - kubectl create -f simplewebservice.yaml
         - kubectl create -f simpleweb.yaml
+        - kubectl create -f kubernetes-dashboard.yaml
