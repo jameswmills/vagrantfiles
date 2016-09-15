@@ -1,12 +1,13 @@
 #FILE: etcd.conf
 ETCD_NAME=default
 ETCD_DATA_DIR="/var/lib/etcd/default.etcd"
-ETCD_LISTEN_CLIENT_URLS="https://0.0.0.0:4001,https://{{ masterip }}:4001"
-ETCD_ADVERTISE_CLIENT_URLS="https://localhost:2379,https://localhost:4001,https://{{ masterip   }}:4001"
+ETCD_LISTEN_CLIENT_URLS="https://0.0.0.0:4001"
+ETCD_ADVERTISE_CLIENT_URLS="https://localhost:2379,https://localhost:4001,https://{{ masterip }}:4001"
 ETCD_CLIENT_CERT_AUTH="true"
 ETCD_TRUSTED_CA_FILE="/etc/kubernetes/certs/ca.crt"
 ETCD_CERT_FILE="/etc/kubernetes/certs/{{item}}.crt"
 ETCD_KEY_FILE="/etc/kubernetes/certs/{{item}}.key"
+ETCD_LISTEN_PEER_URLS="https://localhost:2380,https://localhost:7001"
 ETCD_PEER_CLIENT_CERT_AUTH="true"
 ETCD_PEER_TRUSTED_CA_FILE="/etc/kubernetes/certs/ca.crt"
 ETCD_PEER_CERT_FILE="/etc/kubernetes/certs/{{item}}.crt"

@@ -67,6 +67,7 @@
 
     - name: /etc/etcd/etcd.conf
       template: src=etcd.conf.j2 dest=/etc/etcd/etcd.conf
+      with_items: "{{ groups.master }}"
 
     - name: /etc/kubernetes/apiserver
       template: src=apiserver.j2 dest=/etc/kubernetes/apiserver
@@ -109,10 +110,12 @@
       template: src=flanneld_network.j2 dest=/etc/kubernetes/flanneld.json
 
     - name: Add flanneld config to etcd
-      shell: etcdctl set /coreos.com/network/config < /etc/kubernetes/flanneld.json
+      shell: etcdctl --endpoint https://{{ item}}:4001 --cert-file /etc/kubernetes/certs/{{ item }}.crt --key-file /etc/kubernetes/certs/{{ item }}.key --ca-file /etc/kubernetes/certs/ca.crt set /coreos.com/network/config < /etc/kubernetes/flanneld.json
+      with_items: "{{ groups.master }}"
 
     - name: /etc/sysconfig/flanneld
       template: src=flanneld.j2 dest=/etc/sysconfig/flanneld
+      with_items: "{{ groups.master }}"
 
     - name: Remove docker0
       shell: ip link delete docker0 || true
@@ -158,6 +161,7 @@
 
     - name: /etc/sysconfig/flanneld
       template: src=flanneld.j2 dest=/etc/sysconfig/flanneld
+      with_items: "{{ groups.master }}"
 
     - name: Enable services
       command: systemctl enable kube-proxy.service kubelet.service flanneld.service docker.service
@@ -194,7 +198,7 @@
     - name: Add simple web pod definition
       template: src=simpleweb.j2 dest=/root/simpleweb.yaml
 
-    - name: Add kuberneted-dashboard
+    - name: Add kubernetes-dashboard
       template: src=kubernetes-dashboard.j2 dest=/root/kubernetes-dashboard.yaml
 
     - name: Create pods and services
