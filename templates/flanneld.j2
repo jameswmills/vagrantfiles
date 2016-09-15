@@ -1,5 +1,7 @@
 #FILE: flanneld
-FLANNEL_ETCD="http://{{ masterip }}:4001"
+FLANNEL_ETCD="https://{{ masterip }}:4001"
 FLANNEL_ETCD_KEY="/coreos.com/network"
+FLANNELD_ETCD_CAFILE="/etc/kubernetes/certs/ca.crt"
+FLANNELD_ETCD_CERTFILE="/etc/kubernetes/certs/{{item}}.crt"
+FLANNELD_ETCD_KEYFILE="/etc/kubernetes/certs/{{item}}.key"
 #FLANNEL_OPTIONS=""
-EOF
