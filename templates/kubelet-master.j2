@@ -1,0 +1,6 @@
+KUBELET_ADDRESS="--address=127.0.0.1"
+KUBELET_PORT="--port=10250"
+KUBELET_HOSTNAME="--hostname_override={{ ansible_hostname }}"
+KUBELET_API_SERVER="--api_servers=https://{{ masterip }}:6443"
+KUBELET_POD_INFRA_CONTAINER="--pod-infra-container-image=registry.access.redhat.com/rhel7/pod-infrastructure:latest"
+KUBELET_ARGS="--cluster_dns=10.254.0.10 --cluster_domain=kubernetes.local --tls-cert-file=/etc/kubernetes/certs/{{ ansible_hostname }}.crt --tls-private-key-file=/etc/kubernetes/certs/{{ ansible_hostname }}.key --kubeconfig=/etc/kubernetes/kubelet.kubeconfig --register-schedulable=false --config=/etc/kubernetes/manifests/"
