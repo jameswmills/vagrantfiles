@@ -1,14 +1,13 @@
 ---
 - hosts: master:nodes
   become: true
-  name: Hacks for now
+  name: Kubernetes selinux hacks
   tasks:
-    - name: Change the root passwd and disable selinux
+    - name: Add/Set a functional selinux context in /var/lib/kubernetes
       shell: chdir=/etc/sysconfig {{ item }}
       with_items:
-        - echo "root:vagrant" | chpasswd
-        - sed -i -e 's/^SELINUX=enforcing/SELINUX=permissive/' selinux
-        - setenforce 0
+        - semanage fcontext -a -t svirt_sandbox_file_t "/var/lib/kubelet(/.*)?"
+        - restorecon -R -v /var/lib/kubelet
 
 - hosts: master
   become: true

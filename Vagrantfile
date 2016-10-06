@@ -43,6 +43,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       if upgrade
         ahconfig.vm.provision "shell", path: "scripts/ah_upgrade.sh"
       end
+      # We still want the reboot here, even if we are not upgrading,
+      # to work around weird libvirt DNS issues...
       ahconfig.vm.provision :reload
       if ahvm[:name] == last
         ahconfig.vm.provision :ansible do |ansible|
