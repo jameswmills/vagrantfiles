@@ -1,5 +1,11 @@
 VAGRANTFILE_API_VERSION = "2"
 
+###DEFAULTS###
+
+kversion = "1.2.0" # Default image version for containerized kubernetes
+ahbase = "7.2.5"   # Base image version.  Change if  ahconfig.vm.box is not 7.2.5!
+
+
 containerized = true
 if ENV['CONTAINERIZED']
   if ENV['CONTAINERIZED'].downcase == "false"
@@ -13,6 +19,12 @@ if ENV['AHUPGRADE']
     upgrade = false
   end
 end
+
+ahversion = nil
+if ENV['AHVERSION']
+  ahversion = ENV['AHVERSION']
+end
+
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   machines = [ {:name => 'owl', :primary => true},
@@ -41,7 +53,22 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         ahconfig.registration.password = ENV['rh_pass']
       end
       if upgrade
-        ahconfig.vm.provision "shell", path: "scripts/ah_upgrade.sh"
+        if ahbase.start_with?("7.2") and ahbase != "7.2.7"
+          if (not ahversion) or ahversion.start_with?("7.3")
+            # Bug when moving from < 7.2.7 to 7.3.x
+            ahconfig.vm.provision "shell", path: "scripts/ah_get_72x_to_727.sh"
+            ahconfig.vm.provision :reload
+          end
+        end
+        if ahversion
+          if ahversion.start_with?("7.3")
+            kversion = "latest"
+          end
+          ahconfig.vm.provision "shell", path: "scripts/ah_upgrade.sh", args: [ahversion]
+        else
+          kversion = "latest"
+          ahconfig.vm.provision "shell", path: "scripts/ah_upgrade.sh"
+        end
       end
       # We still want the reboot here, even if we are not upgrading,
       # to work around weird libvirt DNS issues...
@@ -55,6 +82,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             ansible.playbook = 'playbook.yaml'
           end
           ansible.groups = groups
+          ansible.extra_vars = {
+            kversion: kversion
+          }
         end
       end
     end

@@ -9,7 +9,7 @@
     "containers": [
       {
         "name": "kube-controller-manager",
-        "image": "rhel7/kubernetes-controller-mgr",
+        "image": "rhel7/kubernetes-controller-mgr:{{kversion}}",
         "volumeMounts": [
           {
             "name": "etcssl",

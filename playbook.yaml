@@ -6,7 +6,7 @@
     - name: Add/Set a functional selinux context in /var/lib/kubernetes
       shell: chdir=/etc/sysconfig {{ item }}
       with_items:
-        - semanage fcontext -a -t svirt_sandbox_file_t "/var/lib/kubelet(/.*)?"
+        - semanage fcontext -a -t svirt_sandbox_file_t "/var/lib/kubelet(/.*)?" || true
         - restorecon -R -v /var/lib/kubelet
 
 - hosts: master
@@ -201,9 +201,9 @@
       template: src=kubernetes-dashboard.j2 dest=/root/kubernetes-dashboard.yaml
 
     - name: Create pods and services
-      command: chdir=/root {{ item }}
+      shell: chdir=/root {{ item }}
       with_items:
-        - kubectl create namespace kube-system
+        - kubectl create namespace kube-system || true
         - kubectl create -f skydns-svc.yaml
         - kubectl create -f skydns.yaml
         - kubectl create -f bb.yaml
