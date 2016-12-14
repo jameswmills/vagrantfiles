@@ -21,7 +21,7 @@ if ENV['AHUPGRADE']
 end
 
 ahversion = nil
-if ENV['AHVERSION']
+if ENV['AHVERSION'] and not ENV['AHVERSION'].empty?
   ahversion = ENV['AHVERSION']
 end
 
