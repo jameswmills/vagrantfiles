@@ -1,10 +1,6 @@
 VAGRANTFILE_API_VERSION = "2"
 
-###DEFAULTS###
-
-kversion = "1.2.0" # Default image version for containerized kubernetes
-ahbase = "7.2.5"   # Base image version.  Change if  ahconfig.vm.box is not 7.2.5!
-
+ahbase = "7.2.5"   # Base image version.  This is used to define the ahconfig.vm.box version!
 
 containerized = true
 if ENV['CONTAINERIZED']
@@ -23,6 +19,25 @@ end
 ahversion = nil
 if ENV['AHVERSION'] and not ENV['AHVERSION'].empty?
   ahversion = ENV['AHVERSION']
+end
+
+# Ensure "containerized" is set to true in the following conditions,
+# overriding user specification:
+# * ahbase is 7.3.x
+# * ahversion is 7.3.x
+# * upgrade is true
+
+if not containerized
+  if ahversion and ahversion.start_with?("7.3")
+    puts "ahversion is set to \"#{ahversion}\".  No RPMS available in 7.3.x.  Deploying with containerized kubernetes."
+    containerized = true
+  elsif ahbase.start_with?("7.3")
+    puts "ahbase is set to \"#{ahbase}\".  No RPMS available in 7.3.x.  Deploying with containerized kubernetes."
+    containerized = true
+  elsif upgrade and not ahversion
+    puts "Upgrade is \"true\".  No RPMS available in 7.3.x.  Deploying with containerized kubernetes."
+    containerized = true
+  end
 end
 
 
@@ -45,12 +60,16 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   last = machines[-1][:name]
   machines.each do |ahvm|
     config.vm.define ahvm[:name].to_s, primary: ahvm[:primary] do |ahconfig|
-      ahconfig.vm.box = "atomic-7.2.5" 
+      ahconfig.vm.box = "atomic-#{ahbase}"
       ahconfig.vm.hostname = ahvm[:name].to_s
       ahconfig.vm.synced_folder ".", "/vagrant", disabled: true
       if Vagrant.has_plugin?('vagrant-registration')
         ahconfig.registration.username = ENV['rh_user']
         ahconfig.registration.password = ENV['rh_pass']
+      end
+      config.vm.provider :libvirt do |libvirt|
+        libvirt.memory = 4096
+        libvirt.cpus = 4
       end
       if upgrade
         if ahbase.start_with?("7.2") and ahbase != "7.2.7"
@@ -68,6 +87,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         else
           kversion = "latest"
           ahconfig.vm.provision "shell", path: "scripts/ah_upgrade.sh"
+        end
+      else
+        # In the event no upgrade is being performed, ensure the correct kube
+        # container version is specified for ahbase.
+        if ahbase.start_with?("7.3")
+          kversion = "latest"
+        else
+          kversion = "1.2.0"
         end
       end
       # We still want the reboot here, even if we are not upgrading,
