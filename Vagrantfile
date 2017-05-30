@@ -1,6 +1,6 @@
 VAGRANTFILE_API_VERSION = "2"
 
-ahbase = "7.2.5"   # Base image version.  This is used to define the ahconfig.vm.box version!
+ahbase = "7.3.5"   # Base image version.  This is used to define the ahconfig.vm.box version!
 
 containerized = true
 if ENV['CONTAINERIZED']
@@ -66,6 +66,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       if Vagrant.has_plugin?('vagrant-registration')
         ahconfig.registration.username = ENV['rh_user']
         ahconfig.registration.password = ENV['rh_pass']
+        if ENV['rh_poolid']
+          ahconfig.registration.pools = ENV['rh_poolid']
+        end
       end
       config.vm.provider :libvirt do |libvirt|
         libvirt.memory = 4096
