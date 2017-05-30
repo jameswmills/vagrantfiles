@@ -66,7 +66,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       if Vagrant.has_plugin?('vagrant-registration')
         ahconfig.registration.username = ENV['rh_user']
         ahconfig.registration.password = ENV['rh_pass']
-        if ENV['rh_poolid']
+        if ENV['rh_poolid'] and not ENV['rh_poolid'].empty?
           ahconfig.registration.pools = ENV['rh_poolid']
         end
       end
