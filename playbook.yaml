@@ -12,10 +12,33 @@
 - hosts: master
   become: true
   vars:
-    masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
+    masterip: "{{ hostvars[groups.master[0]]['ansible_host'] }}"
   tasks:
+    - name: (Cleanup) Delete pods and services
+      shell: chdir=/root {{ item }} || true
+      with_items:
+        - kubectl delete deployment --namespace=kube-system kubernetes-dashboard
+        - kubectl delete pod busybox
+        - kubectl delete pod nginx
+        - kubectl delete service nginx-service
+        - kubectl delete rc --namespace=kube-system kube-dns-v11
+        - kubectl delete service --namespace=kube-system kube-dns
+
+    - name: (Cleanup) Remove nodes if they exist
+      shell: kubectl delete node {{ item }} || true
+      with_items: "{{ groups.nodes }}"
+
+    - name:  (Cleanup) Stop kube services
+      command: systemctl stop etcd.service kube-apiserver.service kube-controller-manager.service kube-proxy.service kube-scheduler.service
+
+    - name:  (Cleanup) Disable kube services
+      command: systemctl disable etcd.service kube-apiserver.service kube-controller-manager.service kube-proxy.service kube-scheduler.service
+
+    - name: (Cleanup) Remove etcd member configuration
+      shell: rm -rf /var/lib/etcd/default.etcd/*
+
     - name: Hostnames and IP addresses
-      debug: msg="System {{ hostvars[item]['inventory_hostname'] }} has IP {{hostvars[item]['ansible_ssh_host'] }}"
+      debug: msg="System {{ hostvars[item]['inventory_hostname'] }} has IP {{hostvars[item]['ansible_host'] }}"
       with_items: "{{ groups.all }}"
 
     - name: Create local certs directory
@@ -137,7 +160,7 @@
 - hosts: nodes
   become: true
   vars:
-    masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
+    masterip: "{{ hostvars[groups.master[0]]['ansible_host'] }}"
   tasks:
 
     - name: Copy certs from localhost to Nodes
@@ -162,6 +185,12 @@
       template: src=flanneld.j2 dest=/etc/sysconfig/flanneld
       with_items: "{{ groups.master }}"
 
+    - name: (Cleanup) Stop services
+      command: systemctl stop kube-proxy.service kubelet.service flanneld.service docker.service
+
+    - name: (Cleanup) Disable services
+      command: systemctl disable kube-proxy.service kubelet.service flanneld.service docker.service
+
     - name: Enable services
       command: systemctl enable kube-proxy.service kubelet.service flanneld.service docker.service
 
@@ -180,7 +209,7 @@
 - hosts: master
   become: true
   vars:
-    masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
+    masterip: "{{ hostvars[groups.master[0]]['ansible_host'] }}"
   tasks:
     - name: Add skyDNS/kube2sky pod definition
       template: src=skydns.j2 dest=/root/skydns.yaml
@@ -201,9 +230,9 @@
       template: src=kubernetes-dashboard.j2 dest=/root/kubernetes-dashboard.yaml
 
     - name: Create pods and services
-      shell: chdir=/root {{ item }}
+      shell: chdir=/root {{ item }} || true
       with_items:
-        - kubectl create namespace kube-system || true
+        - kubectl create namespace kube-system
         - kubectl create -f skydns-svc.yaml
         - kubectl create -f skydns.yaml
         - kubectl create -f bb.yaml

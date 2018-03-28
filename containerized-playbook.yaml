@@ -12,10 +12,10 @@
 - hosts: master
   become: true
   vars:
-    masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
+    masterip: "{{ hostvars[groups.master[0]]['ansible_host'] }}"
   tasks:
     - name: Hostnames and IP addresses
-      debug: msg="System {{ hostvars[item]['inventory_hostname'] }} has IP {{hostvars[item]['ansible_ssh_host'] }}"
+      debug: msg="System {{ hostvars[item]['inventory_hostname'] }} has IP {{hostvars[item]['ansible_host'] }}"
       with_items: "{{ groups.all }}"
 
     - name: Create local certs directory
@@ -158,7 +158,7 @@
 - hosts: nodes
   become: true
   vars:
-    masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
+    masterip: "{{ hostvars[groups.master[0]]['ansible_host'] }}"
   tasks:
 
     - name: Copy certs from localhost to Nodes
@@ -201,7 +201,7 @@
 - hosts: master
   become: true
   vars:
-    masterip: "{{ hostvars[groups.master[0]]['ansible_ssh_host'] }}"
+    masterip: "{{ hostvars[groups.master[0]]['ansible_host'] }}"
   tasks:
     - name: Add skyDNS/kube2sky pod definition
       template: src=skydns.j2 dest=/root/skydns.yaml

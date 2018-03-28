@@ -12,4 +12,4 @@ keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 subjectAltName = @alt_names
 
 [alt_names]
-IP.1 = {{ hostvars[item]['ansible_ssh_host'] }}
+IP.1 = {{ hostvars[item]['ansible_host'] }}

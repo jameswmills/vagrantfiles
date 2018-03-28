@@ -19,6 +19,6 @@ spec:
     name: nginx
   deprecatedPublicIPs:
 {% for host in groups['master'] + groups['nodes'] %}
-  - {{ hostvars[host]['ansible_ssh_host'] }}
+  - {{ hostvars[host]['ansible_host'] }}
 {% endfor %}
 
